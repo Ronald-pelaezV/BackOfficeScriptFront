@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+# ───────────────────────────────────────────────
+# 📄 VALIDACIÓN DE DOCUMENTACIÓN JSDOC (BackOffice)
+# ───────────────────────────────────────────────
+echo "🔍 Ejecutando validación de documentación con ESLint..."
+
+CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
+FILES=$(git diff --name-only origin/$CURRENT_BRANCH...HEAD --diff-filter=ACMR | grep -E '\.js$')
+
+if [ -z "$FILES" ]; then
+    echo "✅ No hay archivos JavaScript modificados para validar."
+    exit 0
+fi
+
+echo "📝 Archivos a validar:"
+echo "$FILES"
+
+ERROR=0
+
+for FILE in $FILES; do
+    if [ -f "$FILE" ]; then
+        echo "📂 Validando $FILE ..."
+
+        # ESLint toma el archivo de configuración automáticamente
+        OUTPUT=$(./node_modules/.bin/eslint --no-warn-ignored --max-warnings 0 "$FILE" 2>&1)
+        STATUS=$?
+
+        if [ $STATUS -ne 0 ]; then
+            ERROR=1
+            echo "$OUTPUT"
+        fi
+    else
+        echo "⚠️ Archivo omitido (no existe): $FILE"
+    fi
+done
+
+if [ $ERROR -ne 0 ]; then
+    echo "❌ Se encontraron errores en la documentación. Corrige antes de hacer push."
+    exit 1
+fi
+
+echo "✅ Validación exitosa. Continuando con el push."
+exit 0

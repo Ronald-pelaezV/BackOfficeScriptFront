@@ -1,0 +1,15 @@
+{
+  "name": "backoffice-eslint-test",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "lint": "eslint src",
+    "lint:valid": "eslint src/valid",
+    "lint:invalid": "eslint src/invalid"
+  },
+  "devDependencies": {
+    "eslint": "^9.0.0",
+    "eslint-plugin-jsdoc": "^50.0.0"
+  }
+}
