@@ -5,6 +5,8 @@
 
 // ERRORES ESPERADOS: clase, método y función sin bloque JSDoc.
 
+
+
 export class ReportView {
     config() {
         return { rows: [] };
