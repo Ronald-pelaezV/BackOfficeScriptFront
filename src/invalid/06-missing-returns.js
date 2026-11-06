@@ -7,7 +7,8 @@
 
 /**
  * Gets the user name.
- *
+ *@description Retrieves the name of the user from the user object.
+ * 
  * @param {Object} user - The user data.
  * 
  * @returns {string} The user name.
