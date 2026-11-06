@@ -7,18 +7,23 @@
 
 /**
  * Gets the user name.
- *
+ *@description Retrieves the name of the user from the user object.
+ * 
  * @param {Object} user - The user data.
+ * 
+ * @returns {string} The user name.
  */
 export function getUserName(user) {
     return user.name;
 }
 
+//comentt
+
 /**
  * Gets the user email.
- *
+ * @description Retrieves the email of the user from the user object.
  * @param {Object} user - The user data.
- * @returns The user email.
+ * @returns {string} The user email.
  */
 export function getUserEmail(user) {
     return user.email;

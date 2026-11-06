@@ -9,7 +9,7 @@
     "lint:invalid": "eslint src/invalid"
   },
   "devDependencies": {
-    "eslint": "^9.0.0",
-    "eslint-plugin-jsdoc": "^50.0.0"
+    "eslint": "^9.39.5",
+    "eslint-plugin-jsdoc": "^50.8.0"
   }
 }

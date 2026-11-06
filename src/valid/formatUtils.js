@@ -8,19 +8,20 @@
  *
  * @description Converts a number into a string with two decimals.
  *
- * @param {number} amount - The amount to format.
+ * @param {number} valor - The amount to format.
  * @param {string} currency - The currency code.
  * @returns {string} The formatted amount.
  * @throws {Error} When the amount is not a number.
  */
-export function formatCurrency(amount, currency) {
-    if (typeof amount !== 'number') {
+export function formatCurrency(valor, currency) {
+    if (typeof valor !== 'number') {
         throw new Error('Invalid amount');
     }
 
-    return `${amount.toFixed(2)} ${currency}`;
-}
+    return `${valor.toFixed(2)} ${currency}`;
 
+
+}
 /**
  * Builds the full name of a user.
  *
@@ -37,8 +38,6 @@ const buildFullName = (firstName, lastName) => {
  *
  * @returns {void}
  */
-function clearFilters() {
+function clearFilters() {}
     // ...
-}
 
-export { buildFullName, clearFilters };
