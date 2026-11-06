@@ -21,7 +21,7 @@ export function formatCurrency(valor, currency) {
     return `${valor.toFixed(2)} ${currency}`;
 
 
-
+}
 /**
  * Builds the full name of a user.
  *
@@ -38,7 +38,6 @@ const buildFullName = (firstName, lastName) => {
  *
  * @returns {void}
  */
-function clearFilters() {
+function clearFilters() {}
     // ...
-}
 
