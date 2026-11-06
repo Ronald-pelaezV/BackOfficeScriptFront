@@ -42,4 +42,3 @@ function clearFilters() {
     // ...
 }
 
-export { buildFullName, clearFilters };

@@ -14,6 +14,8 @@ export function getUserName(user) {
     return user.name;
 }
 
+//comentt
+
 /**
  * Gets the user email.
  *

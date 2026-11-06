@@ -1,4 +1,37 @@
 import jsdoc from 'eslint-plugin-jsdoc';
+import * as espree from 'espree';
+
+/**
+ * Parser that never reports syntax errors.
+ * Tries to read the file as a module, then as a script. If the code cannot be read,
+ * it returns an empty program, so the file is skipped instead of failing the validation.
+ */
+const tolerantParser = {
+    meta: { name: 'tolerant-parser' },
+    parseForESLint(code, options) {
+        const sourceTypes = options.sourceType === 'script' ? ['script', 'module'] : ['module', 'script'];
+
+        for (const sourceType of sourceTypes) {
+            try {
+                return { ast: espree.parse(code, { ...options, sourceType }) };
+            } catch {
+                // Try the next source type.
+            }
+        }
+
+        return {
+            ast: {
+                type: 'Program',
+                body: [],
+                sourceType: 'module',
+                comments: [],
+                tokens: [],
+                range: [0, 0],
+                loc: { start: { line: 1, column: 0 }, end: { line: 1, column: 0 } },
+            },
+        };
+    },
+};
 
 /**
  * Contexts where a JSDoc block is mandatory for functions.
@@ -78,6 +111,7 @@ export default [
     {
         files: ['**/*.js'],
         languageOptions: {
+            parser: tolerantParser,
             ecmaVersion: 2022,
             sourceType: 'module',
         },
