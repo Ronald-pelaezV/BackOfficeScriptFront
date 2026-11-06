@@ -21,7 +21,7 @@ export function getUserName(user) {
 
 /**
  * Gets the user email.
- * 
+ * @description Retrieves the email of the user from the user object.
  * @param {Object} user - The user data 
  * @returns {string} The user email.
  */
