@@ -101,7 +101,8 @@ const customBackOfficePlugin = {
 export default [
     {
         ignores: [
-            'eslint.config.js',
+            'eslint.config.mjs',
+            'src/**',
             'node_modules/**',
             'dist/**',
             'build/**',
@@ -159,10 +160,14 @@ export default [
             'jsdoc/match-description': ['error', {
                 mainDescription: '^(?:[A-Z][\\s\\S]*\\.\\s*)?$',
                 matchDescription: '^[A-Z][\\s\\S]*\\.\\s*$',
+                // "description: true" is required so eslint-plugin-jsdoc 42 (Node 14) also validates the @description tag.
                 tags: {
                     param: true,
                     throws: true,
+                    description: true,
                 },
+                // By default only functions are checked; include classes too.
+                contexts: ['ClassDeclaration', ...functionContexts],
             }],
 
             // Parameters.
@@ -171,8 +176,8 @@ export default [
             'jsdoc/require-param-description': ['error', { contexts: functionContexts }],
             'jsdoc/check-param-names': ['error', { checkDestructured: false, enableFixer: false }],
 
-            // Return values (void is allowed, as in the template).
-            'jsdoc/require-returns': ['error', { contexts: functionContexts }],
+            // Return values: @returns is mandatory in every function (use {void} when nothing is returned, as in the template).
+            'jsdoc/require-returns': ['error', { contexts: functionContexts, forceRequireReturn: true }],
             'jsdoc/require-returns-type': ['error', { contexts: functionContexts }],
 
             // Errors.

@@ -1,0 +1,159 @@
+#!/usr/bin/env bash
+# ───────────────────────────────────────────────
+# 📄 VALIDACIÓN DE DOCUMENTACIÓN (JSDoc) CON ESLINT
+# ───────────────────────────────────────────────
+# Bloquea el push solo si hay errores de documentación en los archivos .js modificados.
+#
+# Las versiones de ESLint que trae el package-lock.json del proyecto
+# (eslint 8.57.1 + eslint-plugin-jsdoc 51.x) necesitan Node >= 20.11, pero el proyecto
+# se trabaja con un Node más viejo (webpack 4). Por eso el hook NO usa el Node activo
+# si es muy viejo: busca un Node >= 20.11 instalado en el equipo (nvm-windows, nvm o el
+# del sistema) y ejecuta ESLint con ese. No hace falta cambiar de versión con "nvm use".
+echo "🔍 Ejecutando validación de documentación con ESLint..."
+
+# Rama principal contra la que se compara cuando la rama actual aún no existe en el remoto.
+MAIN_BRANCH="main"
+
+# Versión mínima de Node que exige eslint-plugin-jsdoc del package-lock.json.
+MIN_NODE="20.11.0"
+
+# ── Utilidades ──────────────────────────────────
+# Devuelve 0 si la versión $1 (ej. v20.18.0) es >= MIN_NODE.
+version_ok() {
+    local v="${1#v}"
+    local IFS=.
+    read -r a b c <<< "$v"
+    read -r x y z <<< "$MIN_NODE"
+    [ "${a:-0}" -gt "$x" ] && return 0
+    [ "${a:-0}" -lt "$x" ] && return 1
+    [ "${b:-0}" -gt "$y" ] && return 0
+    [ "${b:-0}" -lt "$y" ] && return 1
+    [ "${c:-0}" -ge "$z" ]
+}
+
+# Busca un ejecutable de Node >= MIN_NODE. Primero el activo; luego los instalados con nvm.
+find_node() {
+    local candidates=()
+    command -v node > /dev/null 2>&1 && candidates+=("$(command -v node)")
+
+    # nvm-windows (NVM_HOME o la carpeta por defecto %APPDATA%\nvm).
+    local nvm_dirs=()
+    [ -n "$NVM_HOME" ] && nvm_dirs+=("$NVM_HOME")
+    [ -n "$APPDATA" ] && nvm_dirs+=("$APPDATA/nvm")
+    # nvm (Linux / macOS / WSL).
+    nvm_dirs+=("${NVM_DIR:-$HOME/.nvm}/versions/node")
+
+    local d f
+    for d in "${nvm_dirs[@]}"; do
+        command -v cygpath > /dev/null 2>&1 && d="$(cygpath -u "$d" 2>/dev/null || echo "$d")"
+        # Ordena de la versión más nueva a la más vieja ("while read" soporta rutas con espacios).
+        while IFS= read -r f; do
+            [ -x "$f/node.exe" ] && candidates+=("$f/node.exe")
+            [ -x "$f/bin/node" ] && candidates+=("$f/bin/node")
+        done < <(ls -d "$d"/v* 2>/dev/null | sort -rV)
+    done
+    [ -x "/c/Program Files/nodejs/node.exe" ] && candidates+=("/c/Program Files/nodejs/node.exe")
+
+    local n v
+    for n in "${candidates[@]}"; do
+        v="$("$n" --version 2>/dev/null)" || continue
+        if version_ok "$v"; then
+            echo "$n"
+            return 0
+        fi
+    done
+    return 1
+}
+
+# ── Verificación del entorno ────────────────────
+ESLINT_BIN="./node_modules/eslint/bin/eslint.js"
+if [ ! -f "$ESLINT_BIN" ]; then
+    echo "❌ ESLint no está instalado en este proyecto."
+    echo "👉 Ejecuta 'npm install' en la raíz del proyecto y vuelve a intentar el push."
+    exit 1
+fi
+
+CONFIG_FOUND=0
+for CONFIG in eslint.config.mjs eslint.config.js eslint.config.cjs; do
+    if [ -f "./$CONFIG" ]; then
+        CONFIG_FOUND=1
+        break
+    fi
+done
+
+if [ $CONFIG_FOUND -eq 0 ]; then
+    echo "❌ No se encontró el archivo eslint.config.mjs en la raíz del proyecto."
+    echo "👉 Trae los últimos cambios de '$MAIN_BRANCH' a tu rama (git pull origin $MAIN_BRANCH) y vuelve a intentar."
+    exit 1
+fi
+
+NODE_BIN="$(find_node)"
+if [ -z "$NODE_BIN" ]; then
+    echo "❌ La validación de documentación necesita Node $MIN_NODE o superior instalado en el equipo."
+    echo "   Node activo: $(node --version 2>/dev/null || echo 'ninguno')."
+    echo "👉 Instálalo una sola vez con 'nvm install 20' (no hace falta hacer 'nvm use'; el proyecto"
+    echo "   puede seguir trabajando con su Node actual) y vuelve a intentar el push."
+    exit 1
+fi
+echo "ℹ️  ESLint se ejecuta con Node $("$NODE_BIN" --version) ($NODE_BIN)."
+
+# ── Archivos a validar ──────────────────────────
+CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
+
+if git rev-parse --verify --quiet "origin/$CURRENT_BRANCH" > /dev/null; then
+    BASE="origin/$CURRENT_BRANCH"
+elif git rev-parse --verify --quiet "origin/$MAIN_BRANCH" > /dev/null; then
+    BASE="origin/$MAIN_BRANCH"
+    echo "ℹ️  La rama '$CURRENT_BRANCH' no existe en el remoto. Se compara contra '$BASE'."
+else
+    echo "⚠️  No se encontró 'origin/$CURRENT_BRANCH' ni 'origin/$MAIN_BRANCH'. Ejecuta 'git fetch' e intenta de nuevo."
+    exit 1
+fi
+
+FILES=$(git diff --name-only "$BASE"...HEAD --diff-filter=ACMR | grep -E '\.js$')
+
+if [ -z "$FILES" ]; then
+    echo "✅ No hay archivos JavaScript modificados para validar."
+    exit 0
+fi
+
+echo "📝 Archivos a validar:"
+echo "$FILES"
+
+DOC_ERROR=0
+ENV_ERROR=0
+
+# "while read" para soportar rutas con espacios.
+while IFS= read -r FILE; do
+    if [ -f "$FILE" ]; then
+        echo "📂 Validando $FILE ..."
+
+        OUTPUT=$("$NODE_BIN" "$ESLINT_BIN" --no-warn-ignored --max-warnings 0 "$FILE" 2>&1)
+        STATUS=$?
+
+        # ESLint: 0 = sin errores, 1 = errores de documentación, 2 = ESLint no pudo ejecutarse.
+        if [ $STATUS -eq 1 ]; then
+            DOC_ERROR=1
+            echo "$OUTPUT"
+        elif [ $STATUS -ne 0 ]; then
+            ENV_ERROR=1
+            echo "$OUTPUT" | head -5
+        fi
+    else
+        echo "⚠️ Archivo omitido (no existe): $FILE"
+    fi
+done <<< "$FILES"
+
+if [ $ENV_ERROR -ne 0 ]; then
+    echo "❌ ESLint no pudo ejecutarse (problema de instalación o configuración, no de tu documentación)."
+    echo "👉 Ejecuta 'npm install' y vuelve a intentar. Si persiste, avisa al equipo con el mensaje de arriba."
+    exit 1
+fi
+
+if [ $DOC_ERROR -ne 0 ]; then
+    echo "❌ Se encontraron errores en la documentación. Corrige antes de hacer push."
+    exit 1
+fi
+
+echo "✅ Validación exitosa. Continuando con el push."
+exit 0

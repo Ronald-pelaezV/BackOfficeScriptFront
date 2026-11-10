@@ -1,15 +1,14 @@
 {
-  "name": "backoffice-eslint-test",
-  "version": "1.0.0",
+  "name": "webix-jet-app",
+  "version": "1.1.0",
   "private": true,
-  "type": "module",
+  "license": "MIT",
   "scripts": {
-    "lint": "eslint src",
-    "lint:valid": "eslint src/valid",
-    "lint:invalid": "eslint src/invalid"
+    "prepare": "git config core.hooksPath hooks",
+    "lint": "eslint sources"
   },
   "devDependencies": {
-    "eslint": "^9.39.5",
-    "eslint-plugin-jsdoc": "^50.8.0"
+    "eslint": "^8.57.0",
+    "eslint-plugin-jsdoc": "^51.2.3"
   }
 }

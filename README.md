@@ -1,18 +1,37 @@
-# backoffice-eslint-test
+# BackOffice (ejemplo) – validación de documentación
 
-Repositorio de prueba para validar la configuración ESLint de documentación de código (BackOffice).
+Mini réplica del BackOffice (Webix Jet) para probar la validación de documentación:
+ESLint + `eslint.config.mjs` + hook `pre-push`.
+
+Usa las mismas versiones del `package-lock.json` real: **eslint 8.57.1** y **eslint-plugin-jsdoc 51.4.1**
+(este último necesita Node >= 20.11; el hook lo busca solo aunque tengas activo Node 14/16).
+
+## Estructura
+
+```
+sources/
+  app.js                 clase JetApp (constructor + método)
+  views/top.js           JetView con callback inline (arrow)
+  views/users/list.js    JetView con callbacks inline, métodos async
+  models/users.js        funciones exportadas con @throws
+  services/api.js        función async con parámetro opcional y @throws
+  utils/format.js        funciones en const (arrow y function)
+hooks/pre-push           hook versionado (npm install lo activa con core.hooksPath)
+eslint.config.mjs        reglas de documentación
+```
 
 ## Uso
 
 ```bash
-npm install
-npm run lint:valid     # debe terminar sin errores
-npm run lint:invalid   # debe reportar errores en cada archivo
-npm run lint           # todo el proyecto
+npm install          # instala ESLint y activa el hook (git config core.hooksPath hooks)
+npm run lint         # valida todo sources/
 ```
 
-## Estructura
+## Cómo probar
 
-- `src/valid/`: archivos que cumplen la plantilla (no deben generar errores).
-- `src/invalid/`: archivos con un tipo de error cada uno. El comentario al inicio indica qué se espera.
-- `hooks/pre-push`: hook para validar antes del push (copiar a `.git/hooks/pre-push`).
+1. Crea una rama, daña la documentación de algún archivo de `sources/` (quita un `@param`,
+   pon una descripción en minúscula, borra el encabezado, etc.) y haz commit.
+2. `git push` → el hook valida solo los `.js` modificados en la rama y bloquea si hay errores.
+3. Arregla la documentación, commit y push de nuevo → pasa.
+
+Un archivo con sintaxis rota no bloquea el push (solo se valida documentación).
