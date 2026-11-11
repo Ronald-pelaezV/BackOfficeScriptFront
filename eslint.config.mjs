@@ -152,6 +152,68 @@ const customBackOfficePlugin = {
                 };
             },
         },
+
+        /**
+         * Validates that the documentation is written in English.
+         * Heuristic without dependencies: a block fails if its text has Spanish characters (á, é, ñ, ¿...)
+         * or at least 2 different common Spanish words. Text between quotes or backticks is allowed
+         * (business names), and tags with names or references (@file, @extends, @see...) are skipped.
+         */
+        'english-only': {
+            meta: { type: 'problem' },
+            create(context) {
+                const sourceCode = context.sourceCode || context.getSourceCode();
+                const spanishWords = new Set([
+                    'el', 'la', 'los', 'las', 'del', 'que', 'para', 'con', 'una', 'unos', 'unas', 'por', 'según',
+                    'cuando', 'como', 'esta', 'este', 'estos', 'estas', 'pero', 'entre', 'sobre', 'desde', 'hasta',
+                    'cada', 'donde', 'también', 'retorna', 'devuelve', 'obtiene', 'carga', 'valida', 'muestra',
+                    'maneja', 'crea', 'elimina', 'actualiza', 'guarda', 'configura', 'inicializa', 'selecciona',
+                    'usuario', 'usuarios', 'datos', 'valor', 'valores', 'fecha', 'lista', 'tabla', 'objeto',
+                    'parámetro', 'función', 'método', 'clase', 'archivo', 'identificador', 'nombre', 'cadena',
+                    'número', 'verdadero', 'falso', 'vacío', 'vacía',
+                ]);
+                const skippedTags = /^@(file|fileoverview|extends|augments|author|see|example|module|requires|license|copyright|version|since)\b/;
+
+                return {
+                    'Program:exit'() {
+                        for (const comment of sourceCode.getAllComments()) {
+                            if (comment.type !== 'Block' || !comment.value.startsWith('*')) continue;
+
+                            const found = [];
+                            let reportLine = null;
+                            let skipping = false;
+
+                            comment.value.split('\n').forEach((rawLine, i) => {
+                                let text = rawLine.replace(/^\s*\*?\s?/, '').trim();
+                                if (text.startsWith('@')) skipping = skippedTags.test(text);
+                                if (skipping || reportLine) return;
+
+                                text = text
+                                    .replace(/(["'`]).*?\1/g, ' ')                       // quoted names
+                                    .replace(/\{[^}]*\}/g, ' ')                          // {types}
+                                    .replace(/^@(param|arg|argument|property|prop)\s+\[?[\w$.]+\]?/, ' ') // param name
+                                    .replace(/^@\w+/, ' ');                              // tag name
+
+                                const accented = text.match(/[\wáéíóúñü]*[áéíóúñ¿¡][\wáéíóúñü]*/i);
+                                if (accented) found.push(accented[0].toLowerCase());
+                                for (const word of text.toLowerCase().match(/[a-záéíóúñü]+/g) || []) {
+                                    if (spanishWords.has(word) && !found.includes(word)) found.push(word);
+                                }
+
+                                if (accented || found.length >= 2) reportLine = comment.loc.start.line + i;
+                            });
+
+                            if (reportLine) {
+                                context.report({
+                                    loc: { start: { line: reportLine, column: 0 }, end: { line: reportLine, column: 0 } },
+                                    message: `La documentación debe estar en inglés; se encontró texto en español: ${found.slice(0, 3).map(w => `"${w}"`).join(', ')}.`,
+                                });
+                            }
+                        }
+                    },
+                };
+            },
+        },
     },
 };
 
@@ -251,6 +313,9 @@ export default [
 
             // Class block as in the template: description + @description + @extends.
             'custom-backoffice/class-doc': 'error',
+
+            // Documentation written in English only.
+            'custom-backoffice/english-only': 'error',
 
             // Format.
             'jsdoc/require-asterisk-prefix': 'error',
