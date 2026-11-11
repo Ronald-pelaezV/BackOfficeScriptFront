@@ -152,6 +152,47 @@ const customBackOfficePlugin = {
     },
 };
 
+/**
+ * Spanish messages for the eslint-plugin-jsdoc rules: [rule, pattern of the original message, new message].
+ * "$1" is replaced with the value captured by the pattern (parameter or tag name).
+ * Messages not listed here are shown as they are, so a missing entry never breaks the validation.
+ */
+const spanishMessages = [
+    ['jsdoc/require-jsdoc', /./, 'Falta el bloque de documentación (/** ... */) de esta clase, método o función.'],
+    ['jsdoc/require-description', /@description description/, 'La etiqueta @description está vacía; escribe la descripción después de la etiqueta.'],
+    ['jsdoc/require-description', /./, 'Falta la descripción del bloque: escribe una línea que explique qué hace.'],
+    ['jsdoc/match-description', /./, 'La descripción debe iniciar con mayúscula y terminar con punto.'],
+    ['jsdoc/require-param', /"(.+)"/, 'Falta documentar el parámetro "$1" con @param {tipo} $1 - Descripción.'],
+    ['jsdoc/require-param-type', /"(.+)"/, 'Falta el tipo del parámetro "$1"; ejemplo: @param {string} $1 - Descripción.'],
+    ['jsdoc/require-param-description', /"(.+)"/, 'Falta la descripción del parámetro "$1"; ejemplo: @param {tipo} $1 - Descripción.'],
+    ['jsdoc/check-param-names', /^Expected @param names? to be "(.+?)"/, 'Los nombres u orden de los @param no coinciden con la función; se esperaba: $1.'],
+    ['jsdoc/check-param-names', /@param "(.+?)" does not match an existing/, 'El @param "$1" no existe en la función; elimínalo o corrige el nombre.'],
+    ['jsdoc/check-param-names', /^Found more than one/, 'Hay un @param repetido; deja solo uno por parámetro.'],
+    ['jsdoc/require-returns', /./, 'Falta la etiqueta @returns {tipo} Descripción. (usa @returns {void} si no retorna nada).'],
+    ['jsdoc/require-returns-type', /./, 'Falta el tipo en @returns; ejemplo: @returns {Object} Descripción. o @returns {void}.'],
+    ['jsdoc/require-throws', /./, 'La función lanza un error (throw); agrega @throws {Error} Descripción.'],
+    ['jsdoc/require-asterisk-prefix', /./, 'Cada línea del bloque de documentación debe iniciar con " * ".'],
+    ['jsdoc/check-alignment', /./, 'Los asteriscos (*) del bloque de documentación no están alineados.'],
+    ['jsdoc/check-tag-names', /Replace "(.+?)" JSDoc tag with "(.+?)"/, 'Usa la etiqueta @$2 en lugar de @$1.'],
+    ['jsdoc/check-tag-names', /tag name "(.+?)"/, 'La etiqueta @$1 no existe; revisa si está mal escrita (ej. @returns, @param, @description).'],
+];
+
+/**
+ * Processor that only replaces the messages of the jsdoc rules with the Spanish ones.
+ * The code is not modified and the rules keep working the same way.
+ */
+const spanishProcessor = {
+    meta: { name: 'spanish-messages' },
+    supportsAutofix: true,
+    preprocess: (text) => [text],
+    postprocess: (messages) => messages[0].map((msg) => {
+        const entry = spanishMessages.find(([rule, pattern]) => rule === msg.ruleId && pattern.test(msg.message));
+        if (!entry) return msg;
+        const match = msg.message.match(entry[1]) || [];
+        return { ...msg, message: entry[2].replace(/\$(\d)/g, (_, n) => match[n] || '') };
+    }),
+};
+
 export default [
     {
         ignores: [
@@ -165,6 +206,7 @@ export default [
     },
     {
         files: ['**/*.js'],
+        processor: spanishProcessor,
         languageOptions: {
             parser: tolerantParser,
             ecmaVersion: 2022,
