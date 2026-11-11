@@ -10,7 +10,7 @@ import {devConfig, profile} from "config/config"; // Importing configuration set
 /**
  * Management report table view.
  *
- * @description La descripción de esta clase está en español.
+ * @description This class defines the view for the management report (Informe Gerencial) table, including its configuration, initialization, and event handling.
  * 
  * @extends JetView
  * 
