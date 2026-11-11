@@ -20,7 +20,7 @@ export default class tableInformeGerencialView extends JetView {
     /**
      * Configures the view layout and components.
      *
-     * @returns {Object} The configuration object for the view.
+     * @returns {} The configuration object for the view.
      */
     config() {
         const _ = this.app.getService("locale")._; // Localization service
