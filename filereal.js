@@ -15,7 +15,7 @@ import {devConfig, profile} from "config/config"; // Importing configuration set
  * @extends JetView
  * 
  */
-export default class tableInformeGerencialView extends JetView { //cambio para commit
+export default class tableInformeGerencialView extends JetView { 
  
     /**
      * Configures the view layout and components.
