@@ -53,7 +53,7 @@ export default class tableInformeGerencialView extends JetView {
                 /**
                  * Adds the first level rows to the total.
                  *
-                 * @param {Object} obj - The row data.
+                 * @param {Object} obj - 
                  * @returns {void}
                  */
                 master.data.each(function (obj) {

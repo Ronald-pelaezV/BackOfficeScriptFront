@@ -110,7 +110,9 @@ else
     exit 1
 fi
 
-FILES=$(git diff --name-only "$BASE"...HEAD --diff-filter=ACMR | grep -E '\.js$')
+# Archivos tocados por CUALQUIER commit del push (no solo el diferencial neto): si un commit daña
+# un archivo y otro lo arregla, el archivo igual se lista y se valida en su estado actual.
+FILES=$(git log --name-only --format= --diff-filter=ACMR "$BASE"..HEAD | grep -E '\.js$' | sort -u)
 
 if [ -z "$FILES" ]; then
     echo "✅ No hay archivos JavaScript modificados para validar."
