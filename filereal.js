@@ -10,7 +10,7 @@ import {devConfig, profile} from "config/config"; // Importing configuration set
 /**
  * Management report table view.
  *
- * @description Displays the report grouped by partner and country, with bets, awards and GGR
+ * Displays the report grouped by partner and country, with bets, awards and GGR
  * per product (including predictive markets). In `ByProvider` mode each day is detailed by provider.
  *
  * @extends JetView
