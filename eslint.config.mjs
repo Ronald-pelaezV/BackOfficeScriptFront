@@ -95,6 +95,60 @@ const customBackOfficePlugin = {
                 };
             },
         },
+
+        /**
+         * Validates the class JSDoc block as in the BackOffice template:
+         * main description line + @description tag + @extends when the class inherits.
+         * Classes without a JSDoc block are reported by jsdoc/require-jsdoc.
+         */
+        'class-doc': {
+            meta: { type: 'problem' },
+            create(context) {
+                const sourceCode = context.sourceCode || context.getSourceCode();
+
+                /**
+                 * Checks the JSDoc block of a class.
+                 *
+                 * @param {Object} node - The class node.
+                 * @returns {void}
+                 */
+                const checkClass = (node) => {
+                    const target = /^Export(Default|Named)Declaration$/.test(node.parent.type) ? node.parent : node;
+                    const comments = sourceCode.getCommentsBefore(target);
+                    const jsdoc = comments[comments.length - 1];
+
+                    if (!jsdoc || jsdoc.type !== 'Block' || !jsdoc.value.startsWith('*')) return;
+
+                    const lines = jsdoc.value.split('\n').map(l => l.replace(/^\s*\*?\s?/, '').trim());
+                    const firstTag = lines.findIndex(l => l.startsWith('@'));
+                    const mainText = (firstTag === -1 ? lines : lines.slice(0, firstTag)).join(' ').trim();
+                    const description = jsdoc.value.match(/@description\s+([^@\s][\s\S]*?)(?=\n\s*\*\s*@|$)/);
+
+                    if (!mainText) {
+                        context.report({
+                            loc: jsdoc.loc,
+                            message: 'La documentación de la clase debe iniciar con una línea de descripción (antes de @description).',
+                        });
+                    }
+                    if (!description || !description[1].replace(/[\s*]/g, '')) {
+                        context.report({
+                            loc: jsdoc.loc,
+                            message: 'La documentación de la clase debe contener la etiqueta @description.',
+                        });
+                    }
+                    if (node.superClass && !/@(extends|augments)\s+\S/.test(jsdoc.value)) {
+                        context.report({
+                            loc: jsdoc.loc,
+                            message: 'La documentación de la clase debe contener la etiqueta @extends con la clase padre.',
+                        });
+                    }
+                };
+
+                return {
+                    ClassDeclaration: checkClass,
+                };
+            },
+        },
     },
 };
 
@@ -131,6 +185,9 @@ export default [
         rules: {
             // Header at the top of every file.
             'custom-backoffice/file-header': 'error',
+
+            // Class block as in the template: description + @description + @extends.
+            'custom-backoffice/class-doc': 'error',
 
             // Format.
             'jsdoc/require-asterisk-prefix': 'error',
