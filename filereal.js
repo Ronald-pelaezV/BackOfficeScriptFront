@@ -42,7 +42,7 @@ export default class tableInformeGerencialView extends JetView {
              * Refreshes the filter display with the calculated sum.
              *
              * @param {Object} master - The master data view.
-             * @param {Object} node - 
+             * @param {Object} node - The DOM node of the filter.
              * @param {Object} value - The value object containing columnId.
              * @returns {void}
              */
@@ -53,7 +53,7 @@ export default class tableInformeGerencialView extends JetView {
                 /**
                  * Adds the first level rows to the total.
                  *
-                 * @param {Object} obj - 
+                 * @param {Object} obj - The row data object.
                  * @returns {void}
                  */
                 master.data.each(function (obj) {
