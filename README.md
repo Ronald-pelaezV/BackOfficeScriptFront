@@ -1,10 +1,8 @@
 # BackOffice (ejemplo) – validación de documentación
 
-Mini réplica del BackOffice (Webix Jet) para probar la validación de documentación:
-ESLint + `eslint.config.mjs` + hook `pre-push`.
+Réplica del BackOffice (Webix Jet) para probar la validación de documentación:
+ESLint - `eslint.config.mjs` + hook - `pre-push`.
 
-Usa las mismas versiones del `package-lock.json` real: **eslint 8.57.1** y **eslint-plugin-jsdoc 51.4.1**
-(este último necesita Node >= 20.11; el hook lo busca solo aunque tengas activo Node 14/16).
 
 ## Estructura
 
@@ -34,5 +32,3 @@ npm run lint                         # valida todo sources/
    pon una descripción en minúscula, borra el encabezado, etc.) y haz commit.
 2. `git push` → el hook valida solo los `.js` modificados en la rama y bloquea si hay errores.
 3. Arregla la documentación, commit y push de nuevo → pasa.
-
-Un archivo con sintaxis rota no bloquea el push (solo se valida documentación).
