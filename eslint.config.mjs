@@ -47,6 +47,27 @@ const functionContexts = [
 ];
 
 /**
+ * Contexts where an existing JSDoc block is validated (@param, @returns, descriptions...).
+ * It does not make the JSDoc mandatory there: that is controlled by functionContexts.
+ */
+const documentedFunctionContexts = [
+    'FunctionDeclaration',
+    'FunctionExpression',
+    'ArrowFunctionExpression',
+];
+
+/**
+ * A JSDoc block written before a call that receives a callback, e.g.:
+ *     /** Adds the rows. ... *\/
+ *     master.data.each(function (obj) {...});
+ * eslint-plugin-jsdoc does not link that block to the callback, so the rules that only read the block
+ * (descriptions and types) also run on these statements, and custom-backoffice/callback-doc checks
+ * the rest (@param, @returns and @throws against the callback).
+ */
+const callbackStatement = 'ExpressionStatement[expression.type="CallExpression"]';
+const documentedBlockContexts = [...documentedFunctionContexts, callbackStatement];
+
+/**
  * Custom plugin with the BackOffice rules that eslint-plugin-jsdoc does not cover.
  */
 const customBackOfficePlugin = {
@@ -149,6 +170,69 @@ const customBackOfficePlugin = {
 
                 return {
                     ClassDeclaration: checkClass,
+                };
+            },
+        },
+
+        /**
+         * Validates the JSDoc block written before a call that receives a callback
+         * (e.g. master.data.each(function (obj) {...})), which eslint-plugin-jsdoc does not link to the callback:
+         * every parameter has its @param, no @param is left over, @returns exists and @throws exists if it throws.
+         */
+        'callback-doc': {
+            meta: { type: 'problem' },
+            create(context) {
+                const sourceCode = context.sourceCode || context.getSourceCode();
+                const isFunction = (n) => n && (n.type === 'FunctionExpression' || n.type === 'ArrowFunctionExpression');
+
+                /**
+                 * Checks if a function body throws, without entering nested functions.
+                 *
+                 * @param {Object} node - The node to inspect.
+                 * @returns {boolean} True when a throw statement is found.
+                 */
+                const throwsError = (node) => {
+                    if (!node || typeof node.type !== 'string') return false;
+                    if (node.type === 'ThrowStatement') return true;
+                    if (/Function/.test(node.type)) return false;
+                    return Object.keys(node).some((key) => {
+                        if (key === 'parent') return false;
+                        const value = node[key];
+                        return Array.isArray(value) ? value.some(throwsError) : throwsError(value);
+                    });
+                };
+
+                return {
+                    [callbackStatement](node) {
+                        const callback = node.expression.arguments.find(isFunction);
+                        if (!callback) return;
+
+                        const comments = sourceCode.getCommentsBefore(node);
+                        const jsdoc = comments[comments.length - 1];
+                        if (!jsdoc || jsdoc.type !== 'Block' || !jsdoc.value.startsWith('*')) return;
+
+                        const report = (message) => context.report({ loc: jsdoc.loc, message });
+                        const documented = [...jsdoc.value.matchAll(/@(?:param|arg|argument)\s+(?:\{[^}]*\}\s*)?\[?([\w$]+)/g)].map(m => m[1]);
+                        const params = callback.params
+                            .map(p => (p.type === 'AssignmentPattern' ? p.left : p))
+                            .filter(p => p.type === 'Identifier')
+                            .map(p => p.name);
+
+                        for (const name of params.filter(p => !documented.includes(p))) {
+                            report(`Falta documentar el parámetro "${name}" con @param {tipo} ${name} - Descripción.`);
+                        }
+                        if (callback.params.every(p => p.type === 'Identifier' || p.type === 'AssignmentPattern')) {
+                            for (const name of documented.filter(d => !params.includes(d))) {
+                                report(`El @param "${name}" no existe en la función; elimínalo o corrige el nombre.`);
+                            }
+                        }
+                        if (!/@returns?\b/.test(jsdoc.value)) {
+                            report('Falta la etiqueta @returns {tipo} Descripción. (usa @returns {void} si no retorna nada).');
+                        }
+                        if (!/@throws\b/.test(jsdoc.value) && throwsError(callback.body)) {
+                            report('La función lanza un error (throw); agrega @throws {Error} Descripción.');
+                        }
+                    },
                 };
             },
         },
@@ -263,15 +347,26 @@ const spanishProcessor = {
 
         return messages[0].filter(m => !(m.ruleId === 'jsdoc/match-description' && classLines.has(m.line))).map((msg) => {
             // A tag written without text (e.g. "* @description") is reported as empty, not as a format problem.
-            const emptyTag = (lines[msg.line - 1] || '').match(/^\s*\*?\s*@(\w+)\s*$/);
+            const line = lines[msg.line - 1] || '';
+            const emptyTag = line.match(/^\s*\*?\s*@(\w+)\s*(\{[^}]*\})?\s*$/);
             if (msg.ruleId === 'jsdoc/match-description' && emptyTag) {
                 return { ...msg, message: `La etiqueta @${emptyTag[1]} está vacía; escribe la descripción después de la etiqueta.` };
+            }
+            // A @param written without description (e.g. "* @param {Object} obj -").
+            const emptyParam = line.match(/^\s*\*?\s*@(?:param|arg|argument)\s+(?:\{[^}]*\}\s*)?\[?([\w$.]+)\]?\s*-?\s*$/);
+            if (/^jsdoc\/(match-description|require-param-description)$/.test(msg.ruleId) && emptyParam) {
+                return { ...msg, message: `Falta la descripción del parámetro "${emptyParam[1]}"; ejemplo: @param {tipo} ${emptyParam[1]} - Descripción.` };
             }
 
             const entry = spanishMessages.find(([rule, pattern]) => rule === msg.ruleId && pattern.test(msg.message));
             if (!entry) return msg;
             const match = msg.message.match(entry[1]) || [];
             return { ...msg, message: entry[2].replace(/\$(\d)/g, (_, n) => match[n] || '') };
+        }).filter((msg, _, all) => {
+            // Same text on the same line is shown once, keeping the specific rule over jsdoc/match-description.
+            const same = all.filter(m => m.line === msg.line && m.message === msg.message);
+            const keep = same.find(m => m.ruleId !== 'jsdoc/match-description') || same[0];
+            return keep === msg;
         });
     },
 };
@@ -317,6 +412,9 @@ export default [
             // Documentation written in English only.
             'custom-backoffice/english-only': 'error',
 
+            // JSDoc written before a call that receives a callback (e.g. data.each(function (obj) {...})).
+            'custom-backoffice/callback-doc': 'error',
+
             // Format.
             'jsdoc/require-asterisk-prefix': 'error',
             'jsdoc/check-alignment': 'error',
@@ -352,21 +450,21 @@ export default [
                     description: true,
                 },
                 // By default only functions are checked; include classes too.
-                contexts: ['ClassDeclaration', ...functionContexts],
+                contexts: ['ClassDeclaration', ...documentedBlockContexts],
             }],
 
             // Parameters.
-            'jsdoc/require-param': ['error', { contexts: functionContexts }],
-            'jsdoc/require-param-type': ['error', { contexts: functionContexts }],
-            'jsdoc/require-param-description': ['error', { contexts: functionContexts }],
+            'jsdoc/require-param': ['error', { contexts: documentedFunctionContexts }],
+            'jsdoc/require-param-type': ['error', { contexts: documentedBlockContexts }],
+            'jsdoc/require-param-description': ['error', { contexts: documentedBlockContexts }],
             'jsdoc/check-param-names': ['error', { checkDestructured: false, enableFixer: false }],
 
             // Return values: @returns is mandatory in every function (use {void} when nothing is returned, as in the template).
-            'jsdoc/require-returns': ['error', { contexts: functionContexts, forceRequireReturn: true }],
-            'jsdoc/require-returns-type': ['error', { contexts: functionContexts }],
+            'jsdoc/require-returns': ['error', { contexts: documentedFunctionContexts, forceRequireReturn: true }],
+            'jsdoc/require-returns-type': ['error', { contexts: documentedBlockContexts }],
 
             // Errors.
-            'jsdoc/require-throws': ['error', { contexts: functionContexts }],
+            'jsdoc/require-throws': ['error', { contexts: documentedFunctionContexts }],
         },
     },
 ];
