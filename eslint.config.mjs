@@ -2,9 +2,8 @@ import jsdoc from 'eslint-plugin-jsdoc';
 import * as espree from 'espree';
 
 /**
- * Parser that never reports syntax errors.
- * Tries to read the file as a module, then as a script. If the code cannot be read,
- * it returns an empty program, so the file is skipped instead of failing the validation.
+ * Intenta leer el archivo como módulo y luego como script. Si el código no se puede leer,
+ * devuelve un programa vacío, así el archivo se omite en lugar de hacer fallar la validación.
  */
 const tolerantParser = {
     meta: { name: 'tolerant-parser' },
@@ -15,7 +14,7 @@ const tolerantParser = {
             try {
                 return { ast: espree.parse(code, { ...options, sourceType }) };
             } catch {
-                // Try the next source type.
+                // Intenta con el siguiente tipo de fuente.
             }
         }
 
@@ -34,8 +33,8 @@ const tolerantParser = {
 };
 
 /**
- * Contexts where a JSDoc block is mandatory for functions.
- * Includes inline callbacks declared as object properties (common in Webix configs).
+ * Contextos donde el bloque JSDoc es obligatorio para las funciones.
+ * Incluye los callbacks inline declarados como propiedades de objetos (comunes en las configuraciones de Webix).
  */
 const functionContexts = [
     'FunctionDeclaration',
@@ -47,8 +46,8 @@ const functionContexts = [
 ];
 
 /**
- * Contexts where an existing JSDoc block is validated (@param, @returns, descriptions...).
- * It does not make the JSDoc mandatory there: that is controlled by functionContexts.
+ * Contextos donde se valida un bloque JSDoc que ya existe (@param, @returns, descripciones...).
+ * No hace obligatorio el JSDoc en esos lugares: eso lo controla functionContexts.
  */
 const documentedFunctionContexts = [
     'FunctionDeclaration',
@@ -57,23 +56,23 @@ const documentedFunctionContexts = [
 ];
 
 /**
- * A JSDoc block written before a call that receives a callback, e.g.:
+ * Bloque JSDoc escrito antes de una llamada que recibe un callback, por ejemplo:
  *     /** Adds the rows. ... *\/
  *     master.data.each(function (obj) {...});
- * eslint-plugin-jsdoc does not link that block to the callback, so the rules that only read the block
- * (descriptions and types) also run on these statements, and custom-backoffice/callback-doc checks
- * the rest (@param, @returns and @throws against the callback).
+ * eslint-plugin-jsdoc no relaciona ese bloque con el callback, por eso las reglas que solo leen el bloque
+ * (descripciones y tipos) también se ejecutan sobre estas sentencias, y custom-backoffice/callback-doc revisa
+ * el resto (@param, @returns y @throws comparados con el callback).
  */
 const callbackStatement = 'ExpressionStatement[expression.type="CallExpression"]';
 const documentedBlockContexts = [...documentedFunctionContexts, callbackStatement];
 
 /**
- * Custom plugin with the BackOffice rules that eslint-plugin-jsdoc does not cover.
+ * Plugin propio con las reglas del BackOffice que eslint-plugin-jsdoc no cubre.
  */
 const customBackOfficePlugin = {
     rules: {
         /**
-         * Validates that the file starts with the documentation header (@file + @description).
+         * Valida que el archivo inicie con el encabezado de documentación (@file + @description).
          */
         'file-header': {
             meta: { type: 'problem' },
@@ -83,7 +82,7 @@ const customBackOfficePlugin = {
                         const sourceCode = context.sourceCode || context.getSourceCode();
                         const firstToken = sourceCode.getFirstToken(node);
 
-                        // Empty files do not need a header.
+                        // Los archivos vacíos no necesitan encabezado.
                         if (!firstToken) return;
 
                         const header = sourceCode
@@ -118,9 +117,9 @@ const customBackOfficePlugin = {
         },
 
         /**
-         * Validates the class JSDoc block as in the BackOffice template:
-         * main description line + @description tag + @extends when the class inherits.
-         * Classes without a JSDoc block are reported by jsdoc/require-jsdoc.
+         * Valida el bloque JSDoc de las clases según la plantilla del BackOffice:
+         * línea de descripción principal + etiqueta @description + @extends cuando la clase hereda.
+         * Las clases sin bloque JSDoc las reporta jsdoc/require-jsdoc.
          */
         'class-doc': {
             meta: { type: 'problem' },
@@ -128,9 +127,9 @@ const customBackOfficePlugin = {
                 const sourceCode = context.sourceCode || context.getSourceCode();
 
                 /**
-                 * Checks the JSDoc block of a class.
+                 * Revisa el bloque JSDoc de una clase.
                  *
-                 * @param {Object} node - The class node.
+                 * @param {Object} node - El nodo de la clase.
                  * @returns {void}
                  */
                 const checkClass = (node) => {
@@ -143,11 +142,11 @@ const customBackOfficePlugin = {
                     const lines = jsdoc.value.split('\n').map(l => l.replace(/^\s*\*?\s?/, '').trim());
                     const firstTag = lines.findIndex(l => l.startsWith('@'));
                     const mainText = (firstTag === -1 ? lines : lines.slice(0, firstTag)).join(' ').trim();
-                    // An empty @description is reported by jsdoc/match-description (translated as "está vacía").
+                    // Un @description vacío lo reporta jsdoc/match-description (traducido como "está vacía").
                     const hasDescriptionTag = /@description\b/.test(jsdoc.value);
 
                     if (!mainText) {
-                        // Reported on the first line inside the block, where jsdoc/match-description also reports.
+                        // Se reporta en la primera línea dentro del bloque, donde también reporta jsdoc/match-description.
                         const line = jsdoc.loc.start.line + 1;
                         context.report({
                             loc: { start: { line, column: 0 }, end: { line, column: 0 } },
@@ -175,9 +174,9 @@ const customBackOfficePlugin = {
         },
 
         /**
-         * Validates the JSDoc block written before a call that receives a callback
-         * (e.g. master.data.each(function (obj) {...})), which eslint-plugin-jsdoc does not link to the callback:
-         * every parameter has its @param, no @param is left over, @returns exists and @throws exists if it throws.
+         * Valida el bloque JSDoc escrito antes de una llamada que recibe un callback
+         * (ej. master.data.each(function (obj) {...})), que eslint-plugin-jsdoc no relaciona con el callback:
+         * cada parámetro tiene su @param, no sobra ningún @param, existe @returns y existe @throws si lanza errores.
          */
         'callback-doc': {
             meta: { type: 'problem' },
@@ -186,10 +185,10 @@ const customBackOfficePlugin = {
                 const isFunction = (n) => n && (n.type === 'FunctionExpression' || n.type === 'ArrowFunctionExpression');
 
                 /**
-                 * Checks if a function body throws, without entering nested functions.
+                 * Revisa si el cuerpo de una función lanza un error, sin entrar en funciones anidadas.
                  *
-                 * @param {Object} node - The node to inspect.
-                 * @returns {boolean} True when a throw statement is found.
+                 * @param {Object} node - El nodo a revisar.
+                 * @returns {boolean} True cuando encuentra una sentencia throw.
                  */
                 const throwsError = (node) => {
                     if (!node || typeof node.type !== 'string') return false;
@@ -238,10 +237,10 @@ const customBackOfficePlugin = {
         },
 
         /**
-         * Validates that the documentation is written in English.
-         * Heuristic without dependencies: a block fails if its text has Spanish characters (á, é, ñ, ¿...)
-         * or at least 2 different common Spanish words. Text between quotes or backticks is allowed
-         * (business names), and tags with names or references (@file, @extends, @see...) are skipped.
+         * Valida que la documentación esté escrita en inglés.
+         * Heurística sin dependencias: un bloque falla si su texto tiene caracteres del español (á, é, ñ, ¿...)
+         * o al menos 2 palabras comunes del español distintas. Se permite el texto entre comillas o backticks
+         * (nombres del negocio), y se omiten las etiquetas con nombres o referencias (@file, @extends, @see...).
          */
         'english-only': {
             meta: { type: 'problem' },
@@ -273,10 +272,10 @@ const customBackOfficePlugin = {
                                 if (skipping || reportLine) return;
 
                                 text = text
-                                    .replace(/(["'`]).*?\1/g, ' ')                       // quoted names
-                                    .replace(/\{[^}]*\}/g, ' ')                          // {types}
-                                    .replace(/^@(param|arg|argument|property|prop)\s+\[?[\w$.]+\]?/, ' ') // param name
-                                    .replace(/^@\w+/, ' ');                              // tag name
+                                    .replace(/(["'`]).*?\1/g, ' ')                       // nombres entre comillas
+                                    .replace(/\{[^}]*\}/g, ' ')                          // {tipos}
+                                    .replace(/^@(param|arg|argument|property|prop)\s+\[?[\w$.]+\]?/, ' ') // nombre del parámetro
+                                    .replace(/^@\w+/, ' ');                              // nombre de la etiqueta
 
                                 const accented = text.match(/[\wáéíóúñü]*[áéíóúñ¿¡][\wáéíóúñü]*/i);
                                 if (accented) found.push(accented[0].toLowerCase());
@@ -302,9 +301,9 @@ const customBackOfficePlugin = {
 };
 
 /**
- * Spanish messages for the eslint-plugin-jsdoc rules: [rule, pattern of the original message, new message].
- * "$1" is replaced with the value captured by the pattern (parameter or tag name).
- * Messages not listed here are shown as they are, so a missing entry never breaks the validation.
+ * Mensajes en español para las reglas de eslint-plugin-jsdoc: [regla, patrón del mensaje original, mensaje nuevo].
+ * "$1" se reemplaza por el valor que captura el patrón (nombre del parámetro o de la etiqueta).
+ * Los mensajes que no están en esta lista se muestran tal cual, así una traducción faltante nunca rompe la validación.
  */
 const spanishMessages = [
     ['jsdoc/require-jsdoc', /./, 'Falta el bloque de documentación (/** ... */) de esta clase, método o función.'],
@@ -327,8 +326,8 @@ const spanishMessages = [
 ];
 
 /**
- * Processor that only replaces the messages of the jsdoc rules with the Spanish ones.
- * The code is not modified and the rules keep working the same way.
+ * Procesador que solo reemplaza los mensajes de las reglas de jsdoc por los mensajes en español.
+ * El código no se modifica y las reglas siguen funcionando igual.
  */
 const sourceTexts = new Map();
 const spanishProcessor = {
@@ -342,17 +341,17 @@ const spanishProcessor = {
         const lines = (sourceTexts.get(filename) || '').split(/\r?\n/);
         sourceTexts.delete(filename);
 
-        // Lines already reported by the class rule: the generic format message there would be a duplicate.
+        // Líneas que ya reportó la regla de clases: el mensaje genérico de formato ahí sería un duplicado.
         const classLines = new Set(messages[0].filter(m => m.ruleId === 'custom-backoffice/class-doc').map(m => m.line));
 
         return messages[0].filter(m => !(m.ruleId === 'jsdoc/match-description' && classLines.has(m.line))).map((msg) => {
-            // A tag written without text (e.g. "* @description") is reported as empty, not as a format problem.
+            // Una etiqueta escrita sin texto (ej. "* @description") se reporta como vacía, no como un problema de formato.
             const line = lines[msg.line - 1] || '';
             const emptyTag = line.match(/^\s*\*?\s*@(\w+)\s*(\{[^}]*\})?\s*$/);
             if (msg.ruleId === 'jsdoc/match-description' && emptyTag) {
                 return { ...msg, message: `La etiqueta @${emptyTag[1]} está vacía; escribe la descripción después de la etiqueta.` };
             }
-            // A @param written without description (e.g. "* @param {Object} obj -").
+            // Un @param escrito sin descripción (ej. "* @param {Object} obj -").
             const emptyParam = line.match(/^\s*\*?\s*@(?:param|arg|argument)\s+(?:\{[^}]*\}\s*)?\[?([\w$.]+)\]?\s*-?\s*$/);
             if (/^jsdoc\/(match-description|require-param-description)$/.test(msg.ruleId) && emptyParam) {
                 return { ...msg, message: `Falta la descripción del parámetro "${emptyParam[1]}"; ejemplo: @param {tipo} ${emptyParam[1]} - Descripción.` };
@@ -363,7 +362,7 @@ const spanishProcessor = {
             const match = msg.message.match(entry[1]) || [];
             return { ...msg, message: entry[2].replace(/\$(\d)/g, (_, n) => match[n] || '') };
         }).filter((msg, _, all) => {
-            // Same text on the same line is shown once, keeping the specific rule over jsdoc/match-description.
+            // El mismo texto en la misma línea se muestra una sola vez, conservando la regla específica sobre jsdoc/match-description.
             const same = all.filter(m => m.line === msg.line && m.message === msg.message);
             const keep = same.find(m => m.ruleId !== 'jsdoc/match-description') || same[0];
             return keep === msg;
@@ -403,24 +402,24 @@ export default [
             },
         },
         rules: {
-            // Header at the top of every file.
+            // Encabezado al inicio de cada archivo.
             'custom-backoffice/file-header': 'error',
 
-            // Class block as in the template: description + @description + @extends.
+            // Bloque de las clases según la plantilla: descripción + @description + @extends.
             'custom-backoffice/class-doc': 'error',
 
-            // Documentation written in English only.
+            // Documentación escrita solo en inglés.
             'custom-backoffice/english-only': 'error',
 
-            // JSDoc written before a call that receives a callback (e.g. data.each(function (obj) {...})).
+            // JSDoc escrito antes de una llamada que recibe un callback (ej. data.each(function (obj) {...})).
             'custom-backoffice/callback-doc': 'error',
 
-            // Format.
+            // Formato.
             'jsdoc/require-asterisk-prefix': 'error',
             'jsdoc/check-alignment': 'error',
             'jsdoc/check-tag-names': ['error', { definedTags: ['fileoverview'] }],
 
-            // A JSDoc block is mandatory for classes, methods and functions.
+            // El bloque JSDoc es obligatorio en clases, métodos y funciones.
             'jsdoc/require-jsdoc': ['error', {
                 require: {
                     FunctionDeclaration: true,
@@ -433,37 +432,37 @@ export default [
                 checkConstructors: false,
             }],
 
-            // Every documented element must have a description (main text or @description).
+            // Todo elemento documentado debe tener descripción (texto principal o @description).
             'jsdoc/require-description': ['error', {
                 descriptionStyle: 'any',
                 contexts: ['any'],
             }],
 
-            // Descriptions start with an uppercase letter and end with a period.
+            // Las descripciones inician con mayúscula y terminan con punto.
             'jsdoc/match-description': ['error', {
                 mainDescription: '^(?:[A-Z][\\s\\S]*\\.\\s*)?$',
                 matchDescription: '^[A-Z][\\s\\S]*\\.\\s*$',
-                // "description: true" is required so eslint-plugin-jsdoc 42 (Node 14) also validates the @description tag.
+                // "description: true" es necesario para que eslint-plugin-jsdoc 42 (Node 14) también valide la etiqueta @description.
                 tags: {
                     param: true,
                     throws: true,
                     description: true,
                 },
-                // By default only functions are checked; include classes too.
+                // Por defecto solo se revisan funciones; se incluyen también las clases.
                 contexts: ['ClassDeclaration', ...documentedBlockContexts],
             }],
 
-            // Parameters.
+            // Parámetros.
             'jsdoc/require-param': ['error', { contexts: documentedFunctionContexts }],
             'jsdoc/require-param-type': ['error', { contexts: documentedBlockContexts }],
             'jsdoc/require-param-description': ['error', { contexts: documentedBlockContexts }],
             'jsdoc/check-param-names': ['error', { checkDestructured: false, enableFixer: false }],
 
-            // Return values: @returns is mandatory in every function (use {void} when nothing is returned, as in the template).
+            // Valores de retorno: @returns es obligatorio en toda función (usar {void} cuando no retorna nada, como en la plantilla).
             'jsdoc/require-returns': ['error', { contexts: documentedFunctionContexts, forceRequireReturn: true }],
             'jsdoc/require-returns-type': ['error', { contexts: documentedBlockContexts }],
 
-            // Errors.
+            // Errores.
             'jsdoc/require-throws': ['error', { contexts: documentedFunctionContexts }],
         },
     },
