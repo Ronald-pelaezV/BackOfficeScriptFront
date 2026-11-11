@@ -10,7 +10,7 @@ import {devConfig, profile} from "config/config"; // Importing configuration set
 /**
  * Management report table view.
  *
- * @description 
+ * @description La descripción de esta clase está en español.
  * 
  * @extends JetView
  * 
