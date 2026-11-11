@@ -122,15 +122,18 @@ const customBackOfficePlugin = {
                     const lines = jsdoc.value.split('\n').map(l => l.replace(/^\s*\*?\s?/, '').trim());
                     const firstTag = lines.findIndex(l => l.startsWith('@'));
                     const mainText = (firstTag === -1 ? lines : lines.slice(0, firstTag)).join(' ').trim();
-                    const description = jsdoc.value.match(/@description\s+([^@\s][\s\S]*?)(?=\n\s*\*\s*@|$)/);
+                    // An empty @description is reported by jsdoc/match-description (translated as "está vacía").
+                    const hasDescriptionTag = /@description\b/.test(jsdoc.value);
 
                     if (!mainText) {
+                        // Reported on the first line inside the block, where jsdoc/match-description also reports.
+                        const line = jsdoc.loc.start.line + 1;
                         context.report({
-                            loc: jsdoc.loc,
+                            loc: { start: { line, column: 0 }, end: { line, column: 0 } },
                             message: 'La documentación de la clase debe iniciar con una línea de descripción (antes de @description).',
                         });
                     }
-                    if (!description || !description[1].replace(/[\s*]/g, '')) {
+                    if (!hasDescriptionTag) {
                         context.report({
                             loc: jsdoc.loc,
                             message: 'La documentación de la clase debe contener la etiqueta @description.',
@@ -181,16 +184,34 @@ const spanishMessages = [
  * Processor that only replaces the messages of the jsdoc rules with the Spanish ones.
  * The code is not modified and the rules keep working the same way.
  */
+const sourceTexts = new Map();
 const spanishProcessor = {
     meta: { name: 'spanish-messages' },
     supportsAutofix: true,
-    preprocess: (text) => [text],
-    postprocess: (messages) => messages[0].map((msg) => {
-        const entry = spanishMessages.find(([rule, pattern]) => rule === msg.ruleId && pattern.test(msg.message));
-        if (!entry) return msg;
-        const match = msg.message.match(entry[1]) || [];
-        return { ...msg, message: entry[2].replace(/\$(\d)/g, (_, n) => match[n] || '') };
-    }),
+    preprocess: (text, filename) => {
+        sourceTexts.set(filename, text);
+        return [text];
+    },
+    postprocess: (messages, filename) => {
+        const lines = (sourceTexts.get(filename) || '').split(/\r?\n/);
+        sourceTexts.delete(filename);
+
+        // Lines already reported by the class rule: the generic format message there would be a duplicate.
+        const classLines = new Set(messages[0].filter(m => m.ruleId === 'custom-backoffice/class-doc').map(m => m.line));
+
+        return messages[0].filter(m => !(m.ruleId === 'jsdoc/match-description' && classLines.has(m.line))).map((msg) => {
+            // A tag written without text (e.g. "* @description") is reported as empty, not as a format problem.
+            const emptyTag = (lines[msg.line - 1] || '').match(/^\s*\*?\s*@(\w+)\s*$/);
+            if (msg.ruleId === 'jsdoc/match-description' && emptyTag) {
+                return { ...msg, message: `La etiqueta @${emptyTag[1]} está vacía; escribe la descripción después de la etiqueta.` };
+            }
+
+            const entry = spanishMessages.find(([rule, pattern]) => rule === msg.ruleId && pattern.test(msg.message));
+            if (!entry) return msg;
+            const match = msg.message.match(entry[1]) || [];
+            return { ...msg, message: entry[2].replace(/\$(\d)/g, (_, n) => match[n] || '') };
+        });
+    },
 };
 
 export default [
