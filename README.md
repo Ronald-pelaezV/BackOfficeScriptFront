@@ -16,15 +16,16 @@ sources/
   models/users.js        funciones exportadas con @throws
   services/api.js        función async con parámetro opcional y @throws
   utils/format.js        funciones en const (arrow y function)
-hooks/pre-push           hook versionado (npm install lo activa con core.hooksPath)
+hooks/pre-push           copia versionada del hook (el activo es .git/hooks/pre-push)
 eslint.config.mjs        reglas de documentación
 ```
 
 ## Uso
 
 ```bash
-npm install          # instala ESLint y activa el hook (git config core.hooksPath hooks)
-npm run lint         # valida todo sources/
+npm install                          # instala ESLint
+cp hooks/pre-push .git/hooks/pre-push   # instala el hook (git usa .git/hooks por defecto)
+npm run lint                         # valida todo sources/
 ```
 
 ## Cómo probar

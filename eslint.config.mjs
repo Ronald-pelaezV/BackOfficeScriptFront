@@ -102,7 +102,6 @@ export default [
     {
         ignores: [
             'eslint.config.mjs',
-            'src/**',
             'node_modules/**',
             'dist/**',
             'build/**',
