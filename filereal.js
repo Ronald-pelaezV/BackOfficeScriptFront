@@ -14,8 +14,9 @@ import {devConfig, profile} from "config/config"; // Importing configuration set
  * per product (including predictive markets). In `ByProvider` mode each day is detailed by provider.
  *
  * @extends JetView
+ * 
  */
-export default class tableInformeGerencialView extends JetView {
+export default class tableInformeGerencialView extends JetView { //cambio para commit
  
     /**
      * Configures the view layout and components.
