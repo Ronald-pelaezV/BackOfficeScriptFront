@@ -29,6 +29,8 @@ export default class tableInformeGerencialView extends JetView {
         /**
          * Formats a percentage value.
          *
+         * @param {number} value - The value to format.
+         * @returns {string} The formatted percentage string.
          */
         function percentFormat(value) {
             return webix.i18n.numberFormat(value) + "%"; // Formatting value as percentage
